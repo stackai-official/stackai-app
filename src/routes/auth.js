@@ -67,6 +67,27 @@ router.post('/login', async (req, res) => {
   });
 });
 
+// POST /api/auth/refresh — exchange a refresh token for a new session
+router.post('/refresh', async (req, res) => {
+  const { refresh_token } = req.body;
+
+  if (!refresh_token) {
+    return res.status(400).json({ error: 'refresh_token is required.' });
+  }
+
+  const { data, error } = await supabase.auth.refreshSession({ refresh_token });
+
+  if (error) {
+    return res.status(401).json({ error: error.message });
+  }
+
+  return res.json({
+    access_token:  data.session.access_token,
+    refresh_token: data.session.refresh_token,
+    expires_at:    data.session.expires_at,
+  });
+});
+
 // POST /api/auth/logout
 router.post('/logout', authenticate, async (req, res) => {
   // admin.signOut requires the service-role client and takes a userId
