@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Tyas/stackai-mobile/**)",
+      "Bash(npx cap:*)"
+    ]
+  }
+}
