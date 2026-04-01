@@ -14,6 +14,9 @@ const adminRoutes = require('./routes/admin');
 
 const app = express();
 
+// Required for express-rate-limit behind Railway's reverse proxy
+app.set('trust proxy', 1);
+
 // ── Security headers ──────────────────────────────────────────────────────────
 app.use(helmet());
 
@@ -45,6 +48,7 @@ const globalLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
   message: { error: 'Too many requests, please try again later.' },
 });
 app.use(globalLimiter);
@@ -55,6 +59,7 @@ const chatLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: false,
   message: { error: 'Chat rate limit exceeded. Please wait a moment.' },
 });
 
