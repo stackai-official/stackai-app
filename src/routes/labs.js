@@ -102,7 +102,7 @@ router.post('/parse-pdf', upload.single('pdf'), async (req, res) => {
     try {
       const message = await anthropic.messages.create({
         model: 'claude-sonnet-4-6',
-        max_tokens: 2048,
+        max_tokens: 4000,
         messages: [{
           role: 'user',
           content: [
@@ -116,23 +116,25 @@ router.post('/parse-pdf', upload.single('pdf'), async (req, res) => {
             },
             {
               type: 'text',
-              text: `Extract all lab test results from this PDF and return a JSON array. Each element must have:
-- "test_name": string (e.g. "Testosterone Total", "Free T4", "HbA1c")
-- "value": number (numeric value only, no units)
-- "unit": string (e.g. "ng/dL", "%", "mIU/L") or null if not present
-- "tested_at": ISO 8601 date string (use the report date if found, otherwise today's date)
-- "notes": string with reference range if present (e.g. "Ref: 300-1000 ng/dL"), otherwise null
-
-Return ONLY the raw JSON array, no markdown, no explanation.`,
+              text: `Extract every lab test result from this PDF. Return ONLY a raw JSON array — no markdown, no explanation, no text before or after the array. Each object must have exactly these fields:
+{"test_name":"string","value":number,"unit":"string or null","tested_at":"ISO8601 date","notes":"ref range string or null"}
+Use the report date for tested_at. If no date found use today. Numeric value only (no units in value field).`,
             },
           ],
         }],
       });
 
       const rawJson = message.content[0]?.text?.trim() ?? '[]';
-      console.log('[parse-pdf] Claude raw response (first 200 chars):', rawJson.slice(0, 200));
-      const clean = rawJson.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-      extracted = JSON.parse(clean);
+      console.log('[parse-pdf] Claude raw response (first 300 chars):', rawJson.slice(0, 300));
+
+      // Strip markdown fences if present, then extract the JSON array
+      let jsonText = rawJson.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+      const startIdx = jsonText.indexOf('[');
+      const endIdx   = jsonText.lastIndexOf(']');
+      if (startIdx !== -1 && endIdx !== -1) {
+        jsonText = jsonText.substring(startIdx, endIdx + 1);
+      }
+      extracted = JSON.parse(jsonText);
 
       if (!Array.isArray(extracted)) throw new Error('Response was not an array.');
     } catch (err) {
