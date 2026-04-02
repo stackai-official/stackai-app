@@ -4,6 +4,11 @@ const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
+// GET /api/auth/ping — reachability test
+router.get('/ping', (_req, res) => {
+  res.json({ message: 'auth router ping works' });
+});
+
 // POST /api/auth/signup
 router.post('/signup', async (req, res) => {
   const { email, password, name } = req.body;
