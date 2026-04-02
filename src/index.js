@@ -33,7 +33,12 @@ app.post('/api/auth/test', (_req, res) => {
 });
 
 // ── Security headers ──────────────────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
+  crossOriginResourcePolicy: false,
+}));
 
 // ── CORS (open for testing — lock down before production) ────────────────────
 app.use(cors({
