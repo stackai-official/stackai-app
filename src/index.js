@@ -5,17 +5,20 @@ const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 
-const authRoutes = require('./routes/auth');
-const stackRoutes = require('./routes/stack');
-const labsRoutes = require('./routes/labs');
-const cyclesRoutes = require('./routes/cycles');
-const chatRoutes = require('./routes/chat');
-const adminRoutes = require('./routes/admin');
-
 const app = express();
 
 // Required for express-rate-limit behind Railway's reverse proxy
 app.set('trust proxy', 1);
+
+// ── Diagnostic direct route ───────────────────────────────────────────────────
+app.get('/test', (_req, res) => {
+  res.json({
+    message: 'direct route works',
+    routes: app._router.stack
+      .filter(r => r.route)
+      .map(r => ({ path: r.route.path, methods: Object.keys(r.route.methods) })),
+  });
+});
 
 // ── Security headers ──────────────────────────────────────────────────────────
 app.use(helmet());
@@ -51,12 +54,43 @@ const chatLimiter = rateLimit({
 });
 
 // ── Routes ────────────────────────────────────────────────────────────────────
+console.log('About to require auth routes...');
+const authRoutes = require('./routes/auth');
+console.log('Auth routes required successfully:', typeof authRoutes);
 app.use('/api/auth', authRoutes);
+console.log('Auth routes mounted at /api/auth');
+
+console.log('About to require stack routes...');
+const stackRoutes = require('./routes/stack');
+console.log('Stack routes required successfully:', typeof stackRoutes);
 app.use('/api/stack', stackRoutes);
+console.log('Stack routes mounted at /api/stack');
+
+console.log('About to require labs routes...');
+const labsRoutes = require('./routes/labs');
+console.log('Labs routes required successfully:', typeof labsRoutes);
 app.use('/api/labs', labsRoutes);
+console.log('Labs routes mounted at /api/labs');
+
+console.log('About to require cycles routes...');
+const cyclesRoutes = require('./routes/cycles');
+console.log('Cycles routes required successfully:', typeof cyclesRoutes);
 app.use('/api/cycles', cyclesRoutes);
+console.log('Cycles routes mounted at /api/cycles');
+
+console.log('About to require chat routes...');
+const chatRoutes = require('./routes/chat');
+console.log('Chat routes required successfully:', typeof chatRoutes);
 app.use('/api/chat', chatLimiter, chatRoutes);
+console.log('Chat routes mounted at /api/chat');
+
+console.log('About to require admin routes...');
+const adminRoutes = require('./routes/admin');
+console.log('Admin routes required successfully:', typeof adminRoutes);
 app.use('/api/admin', adminRoutes);
+console.log('Admin routes mounted at /api/admin');
+
+console.log('All routes mounted successfully.');
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (_req, res) => res.json({ status: 'ok', version: '1.0.1' }));
