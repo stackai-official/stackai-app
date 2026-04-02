@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "description": "StackAI backend — Express + Supabase + Anthropic proxy",
   "main": "src/index.js",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node --max-old-space-size=512 src/index.js",
     "dev": "nodemon src/index.js"
   },
   "keywords": [],
