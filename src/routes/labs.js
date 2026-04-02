@@ -1,6 +1,6 @@
 const express = require('express');
 const multer = require('multer');
-const pdfParse = require('pdf-parse');
+const pdfParse = require('pdf-parse/lib/pdf-parse.js');
 const Anthropic = require('@anthropic-ai/sdk');
 const { supabaseAdmin } = require('../config/supabase');
 const { authenticate } = require('../middleware/auth');
@@ -94,10 +94,11 @@ router.post('/parse-pdf', upload.single('pdf'), async (req, res) => {
   // 1. Extract raw text from the PDF buffer
   let pdfText;
   try {
-    const parsed = await pdfParse(req.file.buffer);
-    pdfText = parsed.text;
-  } catch (err) {
-    return res.status(422).json({ error: `Could not parse PDF: ${err.message}` });
+    const pdfData = await pdfParse(req.file.buffer);
+    pdfText = pdfData.text;
+  } catch (parseErr) {
+    console.error('PDF parse error:', parseErr.message);
+    return res.status(400).json({ error: 'Could not read PDF file. Make sure it is a valid PDF.' });
   }
 
   if (!pdfText || pdfText.trim().length < 20) {
