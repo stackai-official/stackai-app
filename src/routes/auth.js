@@ -121,4 +121,50 @@ router.get('/me', authenticate, async (req, res) => {
   });
 });
 
+// PUT /api/auth/update-profile — update display name
+router.put('/update-profile', authenticate, async (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'name is required.' });
+  }
+
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(req.user.id, {
+    user_metadata: { name: name.trim() },
+  });
+
+  if (error) return res.status(400).json({ error: error.message });
+  return res.json({ message: 'Profile updated.' });
+});
+
+// PUT /api/auth/update-password — change password for authenticated user
+router.put('/update-password', authenticate, async (req, res) => {
+  const { password } = req.body;
+  if (!password || password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+  }
+
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(req.user.id, { password });
+
+  if (error) return res.status(400).json({ error: error.message });
+  return res.json({ message: 'Password updated.' });
+});
+
+// DELETE /api/auth/account — permanently delete the authenticated user and all their data
+router.delete('/account', authenticate, async (req, res) => {
+  const userId = req.user.id;
+
+  // Delete user data from all tables (cascade should handle this via FK, but be explicit)
+  await Promise.all([
+    supabaseAdmin.from('stack_items').delete().eq('user_id', userId),
+    supabaseAdmin.from('lab_results').delete().eq('user_id', userId),
+    supabaseAdmin.from('cycles').delete().eq('user_id', userId),
+  ]);
+
+  // Delete the auth user (also removes profiles row if FK cascade is set)
+  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+  if (error) return res.status(400).json({ error: error.message });
+
+  return res.json({ message: 'Account deleted.' });
+});
+
 module.exports = router;
