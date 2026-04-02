@@ -72,7 +72,7 @@ app.use('/api/chat', chatLimiter, chatRoutes);
 app.use('/api/admin', adminRoutes);
 
 // ── Health check ──────────────────────────────────────────────────────────────
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok', version: '1.0.1' }));
 
 // ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((_req, res) => res.status(404).json({ error: 'Route not found.' }));
