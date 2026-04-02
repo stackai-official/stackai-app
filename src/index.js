@@ -53,6 +53,19 @@ const chatLimiter = rateLimit({
   message: { error: 'Chat rate limit exceeded. Please wait a moment.' },
 });
 
+// ── Prevent CDN/Fastly caching of API routes ──────────────────────────────────
+app.use('/api', (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  res.setHeader('Surrogate-Control', 'no-store');
+  res.setHeader('CDN-Cache-Control', 'no-store');
+  next();
+});
+
+app.use((_req, res, next) => {
+  res.setHeader('X-Robots-Tag', 'noindex');
+  next();
+});
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 console.log('About to require auth routes...');
 const authRoutes = require('./routes/auth');
