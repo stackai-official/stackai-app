@@ -14,10 +14,22 @@ app.set('trust proxy', 1);
 app.get('/test', (_req, res) => {
   res.json({
     message: 'direct route works',
-    routes: app._router.stack
+    // r.route = direct routes; r.regexp = mounted middleware/routers
+    direct_routes: app._router.stack
       .filter(r => r.route)
       .map(r => ({ path: r.route.path, methods: Object.keys(r.route.methods) })),
+    mounted_routers: app._router.stack
+      .filter(r => !r.route && r.regexp)
+      .map(r => ({ regexp: r.regexp.toString(), name: r.handle.name || '(anonymous)' })),
   });
+});
+
+app.get('/api/test-direct', (_req, res) => {
+  res.json({ message: 'direct api route works' });
+});
+
+app.post('/api/auth/test', (_req, res) => {
+  res.json({ message: 'direct auth route works' });
 });
 
 // ── Security headers ──────────────────────────────────────────────────────────
