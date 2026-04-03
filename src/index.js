@@ -114,6 +114,12 @@ console.log('Chat routes required successfully:', typeof chatRoutes);
 app.use('/api/chat', chatLimiter, chatRoutes);
 console.log('Chat routes mounted at /api/chat');
 
+console.log('About to require community routes...');
+const communityRoutes = require('./routes/community');
+console.log('Community routes required successfully:', typeof communityRoutes);
+app.use('/api/community', communityRoutes);
+console.log('Community routes mounted at /api/community');
+
 console.log('About to require admin routes...');
 const adminRoutes = require('./routes/admin');
 console.log('Admin routes required successfully:', typeof adminRoutes);
