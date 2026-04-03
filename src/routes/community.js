@@ -16,13 +16,13 @@ router.post('/report', authenticate, async (req, res) => {
   const { data, error } = await supabaseAdmin
     .from('community_reports')
     .insert({
-      compound:       compound.trim(),
-      dosage:         dosage ?? null,
-      duration_weeks: duration_weeks ?? null,
-      rating:         Math.round(rating),
-      benefit:        benefit ?? null,
-      side_effects:   side_effects ?? null,
-      recommend:      recommend ?? true,
+      compound:        compound.trim(),
+      dosage:          dosage ?? null,
+      duration_weeks:  duration_weeks ?? null,
+      rating:          Math.round(rating),
+      main_benefit:    benefit ?? null,
+      side_effects:    side_effects ?? null,
+      would_recommend: recommend ?? true,
     })
     .select()
     .single();
@@ -37,7 +37,7 @@ router.get('/reports/:compound', async (req, res) => {
 
   const { data, error } = await supabaseAdmin
     .from('community_reports')
-    .select('rating, benefit, side_effects, recommend')
+    .select('rating, main_benefit, side_effects, would_recommend')
     .ilike('compound', compound);
 
   if (error) return res.status(400).json({ error: error.message });
@@ -45,12 +45,12 @@ router.get('/reports/:compound', async (req, res) => {
 
   const count = data.length;
   const avg_rating = data.reduce((sum, r) => sum + r.rating, 0) / count;
-  const recommend_pct = Math.round((data.filter(r => r.recommend).length / count) * 100);
+  const recommend_pct = Math.round((data.filter(r => r.would_recommend).length / count) * 100);
 
   // Most common benefit
   const benefitCounts = {};
   data.forEach(r => {
-    if (r.benefit) benefitCounts[r.benefit] = (benefitCounts[r.benefit] || 0) + 1;
+    if (r.main_benefit) benefitCounts[r.main_benefit] = (benefitCounts[r.main_benefit] || 0) + 1;
   });
   const top_benefit = Object.entries(benefitCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
