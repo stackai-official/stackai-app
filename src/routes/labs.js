@@ -86,6 +86,18 @@ router.delete('/:id', async (req, res) => {
   return res.json({ message: 'Lab result deleted.' });
 });
 
+// DELETE /api/labs/upload/:uploadId — delete all results from a specific PDF upload
+router.delete('/upload/:uploadId', async (req, res) => {
+  const { error, count } = await supabaseAdmin
+    .from('lab_results')
+    .delete({ count: 'exact' })
+    .eq('uploaded_from', req.params.uploadId)
+    .eq('user_id', req.user.id);
+
+  if (error) return res.status(400).json({ error: error.message });
+  return res.json({ deleted: count ?? 0 });
+});
+
 // POST /api/labs/parse-pdf — upload a PDF, send directly to Claude for extraction, auto-save
 router.post('/parse-pdf', upload.single('pdf'), async (req, res) => {
   try {
@@ -146,14 +158,19 @@ Use the report date for tested_at. If no date found use today. Numeric value onl
       return res.json({ saved: 0, message: 'No lab results found in this PDF.' });
     }
 
-    // Insert all extracted results for this user
+    // Generate upload batch ID from filename + timestamp
+    const uploadId = `pdf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const filename = req.file.originalname || 'lab_report.pdf';
+
+    // Insert all extracted results for this user, tagged with upload batch
     const rows = extracted.map(item => ({
-      user_id:   req.user.id,
-      test_name: String(item.test_name ?? 'Unknown').trim(),
-      value:     Number(item.value),
-      unit:      item.unit ? String(item.unit).trim() : null,
-      tested_at: item.tested_at ?? new Date().toISOString(),
-      notes:     item.notes ? String(item.notes).trim() : null,
+      user_id:       req.user.id,
+      test_name:     String(item.test_name ?? 'Unknown').trim(),
+      value:         Number(item.value),
+      unit:          item.unit ? String(item.unit).trim() : null,
+      tested_at:     item.tested_at ?? new Date().toISOString(),
+      notes:         item.notes ? String(item.notes).trim() : null,
+      uploaded_from: uploadId,
     })).filter(r => !isNaN(r.value));
 
     const { error: insertError } = await supabaseAdmin
@@ -162,7 +179,7 @@ Use the report date for tested_at. If no date found use today. Numeric value onl
 
     if (insertError) return res.status(400).json({ error: insertError.message });
 
-    return res.json({ saved: rows.length });
+    return res.json({ saved: rows.length, upload_id: uploadId, filename });
   } catch (err) {
     console.error('[parse-pdf] FULL ERROR:', err.stack);
     return res.status(500).json({ error: err.message });
