@@ -86,6 +86,32 @@ router.delete('/:id', async (req, res) => {
   return res.json({ message: 'Lab result deleted.' });
 });
 
+// POST /api/labs/body-metrics — log body measurements
+router.post('/body-metrics', async (req, res) => {
+  const { date, weight, body_fat, waist, chest, arms, legs, unit_system, notes } = req.body;
+  if (!date) return res.status(400).json({ error: 'date is required.' });
+
+  const { data, error } = await supabaseAdmin
+    .from('body_metrics')
+    .insert({
+      user_id: req.user.id,
+      date,
+      weight: weight ?? null,
+      body_fat: body_fat ?? null,
+      waist: waist ?? null,
+      chest: chest ?? null,
+      arms: arms ?? null,
+      legs: legs ?? null,
+      unit_system: unit_system ?? 'imperial',
+      notes: notes ?? null,
+    })
+    .select()
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+  return res.status(201).json(data);
+});
+
 // DELETE /api/labs/upload/:uploadId — delete all results from a specific PDF upload
 router.delete('/upload/:uploadId', async (req, res) => {
   const { error, count } = await supabaseAdmin
