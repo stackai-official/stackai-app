@@ -124,6 +124,30 @@ router.post('/injection-log', async (req, res) => {
   return res.status(201).json(data);
 });
 
+// POST /api/stack/daily-log — log daily wellness check-in
+router.post('/daily-log', async (req, res) => {
+  const { date, energy, mood, libido, sleep_quality, joint_pain, notes } = req.body;
+  if (!date) return res.status(400).json({ error: 'date is required.' });
+
+  const { data, error } = await supabaseAdmin
+    .from('daily_logs')
+    .upsert({
+      user_id: req.user.id,
+      date,
+      energy: energy ?? null,
+      mood: mood ?? null,
+      libido: libido ?? null,
+      sleep_quality: sleep_quality ?? null,
+      joint_pain: joint_pain ?? null,
+      notes: notes ?? null,
+    }, { onConflict: 'user_id,date' })
+    .select()
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+  return res.status(201).json(data);
+});
+
 // DELETE /api/stack/:id — remove a stack item
 router.delete('/:id', async (req, res) => {
   const { error, count } = await supabaseAdmin
