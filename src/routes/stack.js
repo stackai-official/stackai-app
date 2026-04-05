@@ -101,6 +101,29 @@ router.get('/dose-logs', async (req, res) => {
   return res.json(data);
 });
 
+// POST /api/stack/injection-log — log an injection at a specific site
+router.post('/injection-log', async (req, res) => {
+  const { site, compound, dose, unit, notes, injected_at } = req.body;
+  if (!site || !compound) return res.status(400).json({ error: 'site and compound are required.' });
+
+  const { data, error } = await supabaseAdmin
+    .from('injection_logs')
+    .insert({
+      user_id: req.user.id,
+      site,
+      compound,
+      dose: dose ?? null,
+      unit: unit ?? null,
+      notes: notes ?? null,
+      injected_at: injected_at || new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+  return res.status(201).json(data);
+});
+
 // DELETE /api/stack/:id — remove a stack item
 router.delete('/:id', async (req, res) => {
   const { error, count } = await supabaseAdmin
