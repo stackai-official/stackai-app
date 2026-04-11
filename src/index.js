@@ -120,6 +120,12 @@ console.log('Community routes required successfully:', typeof communityRoutes);
 app.use('/api/community', communityRoutes);
 console.log('Community routes mounted at /api/community');
 
+console.log('About to require wellness routes...');
+const wellnessRoutes = require('./routes/wellness');
+console.log('Wellness routes required successfully:', typeof wellnessRoutes);
+app.use('/api/wellness', wellnessRoutes);
+console.log('Wellness routes mounted at /api/wellness');
+
 console.log('About to require admin routes...');
 const adminRoutes = require('./routes/admin');
 console.log('Admin routes required successfully:', typeof adminRoutes);
