@@ -72,6 +72,41 @@ router.post('/login', async (req, res) => {
   });
 });
 
+// POST /api/auth/google — exchange a Google ID token for a Supabase session
+router.post('/google', async (req, res) => {
+  const { id_token } = req.body;
+
+  if (!id_token) {
+    return res.status(400).json({ error: 'id_token is required.' });
+  }
+
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: 'google',
+    token: id_token,
+  });
+
+  if (error) {
+    return res.status(401).json({ error: error.message });
+  }
+
+  // Look up admin flag from server-side profiles table
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', data.user.id)
+    .single();
+
+  return res.json({
+    user: {
+      id:       data.user.id,
+      email:    data.user.email,
+      name:     data.user.user_metadata?.full_name || data.user.user_metadata?.name || '',
+      is_admin: profile?.is_admin ?? false,
+    },
+    session: data.session,
+  });
+});
+
 // POST /api/auth/refresh — exchange a refresh token for a new session
 router.post('/refresh', async (req, res) => {
   const { refresh_token } = req.body;
