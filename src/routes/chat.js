@@ -84,4 +84,59 @@ router.post('/', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/chat/body-scan
+ *
+ * Body:
+ *   image — base64 data URL (data:image/jpeg;base64,...)
+ *
+ * Uses Claude vision to estimate body composition from a photo.
+ */
+router.post('/body-scan', async (req, res) => {
+  const { image } = req.body;
+
+  if (!image || !image.startsWith('data:image/')) {
+    return res.status(400).json({ error: 'A valid base64 image data URL is required.' });
+  }
+
+  // Extract media type and base64 data
+  const match = image.match(/^data:(image\/[a-z]+);base64,(.+)$/i);
+  if (!match) {
+    return res.status(400).json({ error: 'Invalid image format.' });
+  }
+  const mediaType = match[1];
+  const base64Data = match[2];
+
+  try {
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mediaType,
+                data: base64Data,
+              },
+            },
+            {
+              type: 'text',
+              text: 'Analyze this body composition photo. Provide estimated: body fat percentage range (e.g. 15-18%), muscle definition level (1-10 scale), and a brief overall physique assessment (2-3 sentences). Be conservative and educational. Format your response exactly as:\nBODY_FAT: <low>-<high>%\nMUSCLE_DEF: <number>/10\nASSESSMENT: <text>\n\nAlways remind the user this is a rough visual estimate, not a medical measurement.',
+            },
+          ],
+        },
+      ],
+    });
+
+    const text = response.content?.[0]?.text || '';
+    return res.json({ analysis: text, usage: response.usage });
+  } catch (err) {
+    return res.status(502).json({ error: `Analysis failed: ${err.message}` });
+  }
+});
+
 module.exports = router;
