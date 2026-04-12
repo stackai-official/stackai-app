@@ -86,7 +86,8 @@ router.post('/google', async (req, res) => {
   });
 
   if (error) {
-    return res.status(401).json({ error: error.message });
+    console.log('Supabase Google auth error:', JSON.stringify(error));
+    return res.status(401).json({ error: error.message, details: error });
   }
 
   // Look up admin flag from server-side profiles table
