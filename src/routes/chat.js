@@ -125,7 +125,7 @@ router.post('/body-scan', async (req, res) => {
             },
             {
               type: 'text',
-              text: 'Analyze this body composition photo. Provide estimated: body fat percentage range (e.g. 15-18%), muscle definition level (1-10 scale), and a brief overall physique assessment (2-3 sentences). Be conservative and educational. Format your response exactly as:\nBODY_FAT: <low>-<high>%\nMUSCLE_DEF: <number>/10\nASSESSMENT: <text>\n\nAlways remind the user this is a rough visual estimate, not a medical measurement.',
+              text: 'You are analyzing a body composition photo for fitness tracking purposes.\n\nPlease analyze this photo and provide estimates for:\n1. Body fat percentage (provide a specific number range e.g. "15-18%")\n2. Muscle definition level (rate 1-10 where 1=no visible muscle, 10=competition ready)\n3. Overall physique assessment (2-3 sentences)\n4. Visible muscle groups (list what is visible)\n5. Recommendations for the user\'s protocol\n\nIMPORTANT: Always provide specific numbers for body fat % and muscle definition score even if approximate. Never say "cannot be estimated" - always give a range.\n\nFormat your response as JSON:\n{"bodyFat": "15-18%", "muscleDefinition": 6, "assessment": "...", "visibleMuscles": ["chest", "arms"], "recommendations": "..."}\n\nRespond ONLY with the JSON object, no other text.',
             },
           ],
         },
