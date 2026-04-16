@@ -9,15 +9,56 @@ const SCAN_INTERVAL_MS = 5000;  // Every 5 seconds
 
 // Series to watch
 const WATCH_SERIES = [
-  'KXNBAGAME',    // NBA game winners
-  'KXNFLGAME',    // NFL game winners
-  'KXMLBGAME',    // MLB game winners
-  'KXNHLGAME',    // NHL game winners
-  'KXBTC15M',     // BTC 15-minute
-  'KXETH15M',     // ETH 15-minute
-  'KXBTCD',       // BTC daily
-  'KXETHD',       // ETH daily
+  // Sports
+  'KXNBAGAME',
+  'KXNFLGAME',
+  'KXMLBGAME',
+  'KXNHLGAME',
+  // Crypto
+  'KXBTC15M',
+  'KXETH15M',
+  'KXBTCD',
+  'KXETHD',
+  // Economic data
+  'KXFEDDECISION',
+  'KXCPI',
+  'KXPROLLS',
+  'KXUSNFP',
+  'KXISMPMI',
+  'KXISMSERVICES',
+  'KXUSRETAIL',
+  'KXUSPPI',
 ];
+
+// Known economic release times (ET)
+const ECONOMIC_RELEASES = [
+  { name: 'CPI',           time: '08:30', series: ['KXCPI', 'KXCPIYOY'] },
+  { name: 'PPI',           time: '08:30', series: ['KXUSPPI'] },
+  { name: 'Jobs/NFP',      time: '08:30', series: ['KXPROLLS', 'KXUSNFP'] },
+  { name: 'Retail Sales',  time: '08:30', series: ['KXUSRETAIL'] },
+  { name: 'ISM PMI',       time: '10:00', series: ['KXISMPMI', 'KXISMSERVICES'] },
+  { name: 'Fed Decision',  time: '14:00', series: ['KXFEDDECISION', 'KXFED'] },
+];
+
+function isNearEconomicRelease() {
+  const now  = new Date();
+  const etOffset = -4; // EDT
+  const etHour   = (now.getUTCHours() + etOffset + 24) % 24;
+  const etMin    = now.getUTCMinutes();
+
+  for (const release of ECONOMIC_RELEASES) {
+    const [rHour, rMin] = release.time.split(':').map(Number);
+    const releaseMinutes = rHour * 60 + rMin;
+    const nowMinutes     = etHour * 60 + etMin;
+    const diff           = Math.abs(nowMinutes - releaseMinutes);
+
+    // Within 5 minutes of release time
+    if (diff <= 5) {
+      return release;
+    }
+  }
+  return null;
+}
 
 // ─── Kalshi Auth ─────────────────────────────────────────────────────────────
 
@@ -250,39 +291,56 @@ let scanCount    = 0;
 
 async function scan() {
   try {
-    // Refresh market list every 5 minutes
     if (Date.now() - lastFetch > 5 * 60 * 1000) {
       markets   = await getActiveGameMarkets();
       lastFetch = Date.now();
-      console.log(`[Kalshi Sweeper] ${markets.length} active markets loaded`);
     }
 
-    // Get current crypto prices
     const btc = await getBtcPrice();
     const eth = await getEthPrice();
+
+    // Check if we're near an economic release
+    const econRelease = isNearEconomicRelease();
+    if (econRelease) {
+      console.log(`\n⚡ ECONOMIC RELEASE WINDOW: ${econRelease.name}`);
+      console.log(`   Scanning ALL ${econRelease.series.join(', ')} markets aggressively...`);
+    }
 
     for (const market of markets) {
       const isCrypto = market.series?.includes('BTC') ||
                        market.series?.includes('ETH');
+      const isEcon   = ECONOMIC_RELEASES.some(r =>
+        r.series.includes(market.series)
+      );
 
-      if (isCrypto) {
-        // Use price-based certainty for crypto
-        const price      = market.series.includes('ETH') ? eth : btc;
-        const certainty  = getCryptoCertainty(market.title, price);
+      if (isEcon) {
+        // During release window — sweep anything at 97%+
+        const price = await getBestYesPrice(market.ticker);
+        if (!price) continue;
 
+        if (econRelease && price >= CERTAINTY_THRESH) {
+          console.log(`  🎯 ECON: ${market.title} — YES @ ${(price*100).toFixed(0)}¢`);
+          await sweepMarket(market, price, 'YES');
+        } else if (price >= 0.90) {
+          console.log(`  📊 ECON: ${market.title} — ${(price*100).toFixed(0)}¢`);
+        }
+
+      } else if (isCrypto) {
+        const price     = market.series.includes('ETH') ? eth : btc;
+        const certainty = getCryptoCertainty(market.title, price);
         if (!certainty) continue;
 
-        // Check time remaining
         const minsLeft = (new Date(market.closeTime) - Date.now()) / 60000;
         if (minsLeft < 0 || minsLeft > 15) continue;
 
-        console.log(`  📊 ${market.title} — BTC @ $${btc?.toFixed(0)} | ${certainty.side} ${(certainty.certainty*100).toFixed(0)}% | ${minsLeft.toFixed(1)} min left`);
+        console.log(`  📊 ${market.title} — BTC @ $${btc?.toFixed(0)} | ${certainty.side} ${(certainty.certainty*100).toFixed(0)}% | ${minsLeft.toFixed(1)}min`);
 
         if (certainty.certainty >= CERTAINTY_THRESH) {
           await sweepMarket(market, certainty.certainty, certainty.side);
         }
+
       } else {
-        // Sports — use orderbook price
+        // Sports
         const price = await getBestYesPrice(market.ticker);
         if (!price) continue;
 
@@ -290,9 +348,7 @@ async function scan() {
           console.log(`  🎯 ${market.title} — YES @ ${(price*100).toFixed(0)}¢`);
           await sweepMarket(market, price, 'YES');
         } else if (price >= 0.85) {
-          console.log(`  📊 ${market.title} — YES @ ${(price*100).toFixed(0)}¢ (warming up)`);
-        } else if (price >= 0.70) {
-          console.log(`  👀 ${market.title} — YES @ ${(price*100).toFixed(0)}¢`);
+          console.log(`  📊 ${market.title} — YES @ ${(price*100).toFixed(0)}¢ (warming)`);
         }
       }
     }
